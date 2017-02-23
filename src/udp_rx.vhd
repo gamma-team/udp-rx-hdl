@@ -182,7 +182,7 @@ BEGIN
         VARIABLE p2_chk_addend_var
             : UNSIGNED(p2_chk_addend'length - 1 DOWNTO 0);
         VARIABLE p2_internal_off_var
-            : UNSIGNED(p2_internal_off_var'length - 1 DOWNTO 0);
+            : UNSIGNED(p2_internal_off'length - 1 DOWNTO 0);
     BEGIN
         IF rising_edge(Clk) THEN
             IF Rst = '1' THEN
