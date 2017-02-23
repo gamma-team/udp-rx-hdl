@@ -87,11 +87,11 @@ ARCHITECTURE normal OF udp_rx IS
     CONSTANT DATA_IN_OFF_UDP_HDR_CHK : INTEGER := 15;
 
     TYPE DATA_BUS IS ARRAY (width - 1 DOWNTO 0)
-        OF STD_LOGIC_VECTOR(7 downto 0);
+        OF STD_LOGIC_VECTOR(7 DOWNTO 0);
 
     SIGNAL p0_data_in : DATA_BUS;
-    SIGNAL p0_data_in_valid : STD_LOGIC_VECTOR(Data_in_valid'length - 1
-                                               DOWNTO 0);
+    SIGNAL p0_data_in_valid
+        : STD_LOGIC_VECTOR(Data_in_valid'length - 1 DOWNTO 0);
     SIGNAL p0_data_in_start : STD_LOGIC;
     SIGNAL p0_data_in_end : STD_LOGIC;
     SIGNAL p0_data_in_err : STD_LOGIC;
@@ -112,8 +112,8 @@ ARCHITECTURE normal OF udp_rx IS
     SIGNAL p0_len_read : UNSIGNED(16 DOWNTO 0);
 
     SIGNAL p1_data_in : DATA_BUS;
-    SIGNAL p1_data_in_valid : STD_LOGIC_VECTOR(p0_data_in_valid'length - 1
-                                               DOWNTO 0);
+    SIGNAL p1_data_in_valid
+        : STD_LOGIC_VECTOR(p0_data_in_valid'length - 1 DOWNTO 0);
     SIGNAL p1_data_in_start : STD_LOGIC;
     SIGNAL p1_data_in_end : STD_LOGIC;
     SIGNAL p1_data_in_err : STD_LOGIC;
@@ -123,8 +123,8 @@ ARCHITECTURE normal OF udp_rx IS
     SIGNAL p1_chk_accum : UNSIGNED(31 DOWNTO 0);
 
     SIGNAL p2_data_in : DATA_BUS;
-    SIGNAL p2_data_in_valid : STD_LOGIC_VECTOR(p1_data_in_valid'length - 1
-                                               DOWNTO 0);
+    SIGNAL p2_data_in_valid
+        : STD_LOGIC_VECTOR(p1_data_in_valid'length - 1 DOWNTO 0);
     SIGNAL p2_data_in_start : STD_LOGIC;
     SIGNAL p2_data_in_end : STD_LOGIC;
     SIGNAL p2_data_in_err : STD_LOGIC;
@@ -136,8 +136,8 @@ ARCHITECTURE normal OF udp_rx IS
     SIGNAL p2_internal_off : UNSIGNED(15 DOWNTO 0);
 
     SIGNAL p3_data_in : DATA_BUS;
-    SIGNAL p3_data_in_valid : STD_LOGIC_VECTOR(p2_data_in_valid'length - 1
-                                               DOWNTO 0);
+    SIGNAL p3_data_in_valid
+        : STD_LOGIC_VECTOR(p2_data_in_valid'length - 1 DOWNTO 0);
     SIGNAL p3_data_in_start : STD_LOGIC;
     SIGNAL p3_data_in_end : STD_LOGIC;
     SIGNAL p3_data_in_err : STD_LOGIC;
@@ -147,8 +147,8 @@ ARCHITECTURE normal OF udp_rx IS
     SIGNAL p3_chk_final : UNSIGNED(15 DOWNTO 0);
 
     SIGNAL p4_data_in : DATA_BUS;
-    SIGNAL p4_data_in_valid : STD_LOGIC_VECTOR(p3_data_in_valid'length - 1
-                                               DOWNTO 0);
+    SIGNAL p4_data_in_valid
+        : STD_LOGIC_VECTOR(p3_data_in_valid'length - 1 DOWNTO 0);
     SIGNAL p4_data_in_start : STD_LOGIC;
     SIGNAL p4_data_in_end : STD_LOGIC;
     SIGNAL p4_data_in_err : STD_LOGIC;
