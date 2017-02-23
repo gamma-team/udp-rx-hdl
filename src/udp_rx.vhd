@@ -174,11 +174,15 @@ BEGIN
             RETURN accum;
         END FUNCTION;
 
-        VARIABLE p0_off_var : UNSIGNED(15 DOWNTO 0);
-        VARIABLE p1_chk_accum_var : UNSIGNED(31 downto 0);
-        VARIABLE p2_chk_accum_var : UNSIGNED(31 downto 0);
-        VARIABLE p2_chk_addend_var : UNSIGNED(15 downto 0);
-        VARIABLE p2_internal_off_var : UNSIGNED(15 DOWNTO 0);
+        VARIABLE p0_off_var : UNSIGNED(p0_len_read'length - 1 DOWNTO 0);
+        VARIABLE p1_chk_accum_var
+            : UNSIGNED(p1_chk_accum'length - 1 DOWNTO 0);
+        VARIABLE p2_chk_accum_var
+            : UNSIGNED(p2_chk_accum'length - 1 DOWNTO 0);
+        VARIABLE p2_chk_addend_var
+            : UNSIGNED(p2_chk_addend'length - 1 DOWNTO 0);
+        VARIABLE p2_internal_off_var
+            : UNSIGNED(p2_internal_off_var'length - 1 DOWNTO 0);
     BEGIN
         IF rising_edge(Clk) THEN
             IF Rst = '1' THEN
