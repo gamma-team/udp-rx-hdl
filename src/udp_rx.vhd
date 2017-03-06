@@ -242,221 +242,223 @@ BEGIN
                 p4_data_in_start <= '0';
                 p4_data_in_end <= '0';
                 p4_data_in_err <= '0';
-            END IF;
-        ELSE
-            --
-            -- Pipeline stage 0: Byte decoding
-            --
-            p0_data_in <= data_in_sig;
-            p0_data_in_valid <= Data_in_valid;
-            p0_data_in_start <= Data_in_start;
-            p0_data_in_end <= Data_in_end;
-            p0_data_in_err <= Data_in_err;
+            ELSE
+                --
+                -- Pipeline stage 0: Byte decoding
+                --
+                p0_data_in <= data_in_sig;
+                p0_data_in_valid <= Data_in_valid;
+                p0_data_in_start <= Data_in_start;
+                p0_data_in_end <= Data_in_end;
+                p0_data_in_err <= Data_in_err;
 
-            p0_off_var := p0_len_read;
-            IF Data_in_start = '1' THEN
-                p0_off_var := (OTHERS => '0');
-            END IF;
-            FOR i IN 0 TO width - 1 LOOP
-                IF Data_in_valid(i) = '1' THEN
-                    -- This case statement is quite large, could be split into
-                    -- multiple stages.
-                    CASE TO_INTEGER(p0_off_var) IS
-                        WHEN DATA_IN_OFF_ADDR_SRC =>
-                            p0_addr_src(7 DOWNTO 0) <= data_in_sig(i);
-                        WHEN DATA_IN_OFF_ADDR_SRC + 1 =>
-                            p0_addr_src(15 DOWNTO 8)
-                                <= data_in_sig(i);
-                        WHEN DATA_IN_OFF_ADDR_SRC + 2 =>
-                            p0_addr_src(23 DOWNTO 16)
-                                <= data_in_sig(i);
-                        WHEN DATA_IN_OFF_ADDR_SRC + 3 =>
-                            p0_addr_src(31 DOWNTO 24)
-                                <= data_in_sig(i);
-                            p0_addr_src_valid <= true;
-                        WHEN DATA_IN_OFF_ADDR_DST =>
-                            p0_addr_dst(7 DOWNTO 0) <= data_in_sig(i);
-                            p0_data_in_valid(i) <= '0';
-                        WHEN DATA_IN_OFF_ADDR_DST + 1 =>
-                            p0_addr_dst(15 DOWNTO 8)
-                                <= data_in_sig(i);
-                            p0_data_in_valid(i) <= '0';
-                        WHEN DATA_IN_OFF_ADDR_DST + 2 =>
-                            p0_addr_dst(23 DOWNTO 16)
-                                <= data_in_sig(i);
-                            p0_data_in_valid(i) <= '0';
-                        WHEN DATA_IN_OFF_ADDR_DST + 3 =>
-                            p0_addr_dst(31 DOWNTO 24)
-                                <= data_in_sig(i);
-                            p0_addr_dst_valid <= true;
-                            p0_data_in_valid(i) <= '0';
-                        WHEN DATA_IN_OFF_PROTO =>
-                            IF data_in_sig(i) /= UDP_PROTO THEN
-                                p0_data_in_err <= '1';
-                            END IF;
-                            p0_data_in_valid(i) <= '0';
-                        WHEN DATA_IN_OFF_UDP_HDR_PORT_SRC =>
-                            p0_udp_port_src(7 DOWNTO 0)
-                                <= data_in_sig(i);
-                        WHEN DATA_IN_OFF_UDP_HDR_PORT_SRC + 1 =>
-                            p0_udp_port_src(15 DOWNTO 8)
-                                <= data_in_sig(i);
-                            p0_udp_port_src_valid <= true;
-                        WHEN DATA_IN_OFF_UDP_HDR_PORT_DST =>
-                            p0_udp_port_dst(7 DOWNTO 0)
-                                <= data_in_sig(i);
-                        WHEN DATA_IN_OFF_UDP_HDR_PORT_DST + 1 =>
-                            p0_udp_port_dst(15 DOWNTO 8)
-                                <= data_in_sig(i);
-                            p0_udp_port_dst_valid <= true;
-                        WHEN DATA_IN_OFF_UDP_HDR_LEN =>
-                            p0_udp_len(7 DOWNTO 0)
-                                <= UNSIGNED(data_in_sig(i));
-                            p0_data_in_valid(i) <= '0';
-                        WHEN DATA_IN_OFF_UDP_HDR_LEN + 1 =>
-                            p0_udp_len(15 DOWNTO 8)
-                                <= UNSIGNED(data_in_sig(i));
-                            p0_udp_len_valid <= true;
-                            p0_data_in_valid(i) <= '0';
-                        WHEN DATA_IN_OFF_UDP_HDR_CHK =>
-                            p0_udp_chk(7 DOWNTO 0)
-                                <= UNSIGNED(data_in_sig(i));
-                            p0_data_in_valid(i) <= '0';
-                        WHEN DATA_IN_OFF_UDP_HDR_CHK + 1 =>
-                            p0_udp_chk(15 DOWNTO 8)
-                                <= UNSIGNED(data_in_sig(i));
-                            p0_udp_chk_valid <= true;
-                            p0_data_in_valid(i) <= '0';
-                        WHEN OTHERS =>
-                            NULL;
-                    END CASE;
-                    p0_off_var := p0_off_var + 1;
+                p0_off_var := p0_len_read;
+                IF Data_in_start = '1' THEN
+                    p0_off_var := (OTHERS => '0');
                 END IF;
-            END LOOP;
-            p0_len_read <= p0_off_var;
+                FOR i IN 0 TO width - 1 LOOP
+                    IF Data_in_valid(i) = '1' THEN
+                        -- This case statement is quite large, could be split
+                        -- into multiple stages.
+                        CASE TO_INTEGER(p0_off_var) IS
+                            WHEN DATA_IN_OFF_ADDR_SRC =>
+                                p0_addr_src(7 DOWNTO 0) <= data_in_sig(i);
+                            WHEN DATA_IN_OFF_ADDR_SRC + 1 =>
+                                p0_addr_src(15 DOWNTO 8)
+                                    <= data_in_sig(i);
+                            WHEN DATA_IN_OFF_ADDR_SRC + 2 =>
+                                p0_addr_src(23 DOWNTO 16)
+                                    <= data_in_sig(i);
+                            WHEN DATA_IN_OFF_ADDR_SRC + 3 =>
+                                p0_addr_src(31 DOWNTO 24)
+                                    <= data_in_sig(i);
+                                p0_addr_src_valid <= true;
+                            WHEN DATA_IN_OFF_ADDR_DST =>
+                                p0_addr_dst(7 DOWNTO 0) <= data_in_sig(i);
+                                p0_data_in_valid(i) <= '0';
+                            WHEN DATA_IN_OFF_ADDR_DST + 1 =>
+                                p0_addr_dst(15 DOWNTO 8)
+                                    <= data_in_sig(i);
+                                p0_data_in_valid(i) <= '0';
+                            WHEN DATA_IN_OFF_ADDR_DST + 2 =>
+                                p0_addr_dst(23 DOWNTO 16)
+                                    <= data_in_sig(i);
+                                p0_data_in_valid(i) <= '0';
+                            WHEN DATA_IN_OFF_ADDR_DST + 3 =>
+                                p0_addr_dst(31 DOWNTO 24)
+                                    <= data_in_sig(i);
+                                p0_addr_dst_valid <= true;
+                                p0_data_in_valid(i) <= '0';
+                            WHEN DATA_IN_OFF_PROTO =>
+                                IF data_in_sig(i) /= UDP_PROTO THEN
+                                    p0_data_in_err <= '1';
+                                END IF;
+                                p0_data_in_valid(i) <= '0';
+                            WHEN DATA_IN_OFF_UDP_HDR_PORT_SRC =>
+                                p0_udp_port_src(7 DOWNTO 0)
+                                    <= data_in_sig(i);
+                            WHEN DATA_IN_OFF_UDP_HDR_PORT_SRC + 1 =>
+                                p0_udp_port_src(15 DOWNTO 8)
+                                    <= data_in_sig(i);
+                                p0_udp_port_src_valid <= true;
+                            WHEN DATA_IN_OFF_UDP_HDR_PORT_DST =>
+                                p0_udp_port_dst(7 DOWNTO 0)
+                                    <= data_in_sig(i);
+                            WHEN DATA_IN_OFF_UDP_HDR_PORT_DST + 1 =>
+                                p0_udp_port_dst(15 DOWNTO 8)
+                                    <= data_in_sig(i);
+                                p0_udp_port_dst_valid <= true;
+                            WHEN DATA_IN_OFF_UDP_HDR_LEN =>
+                                p0_udp_len(7 DOWNTO 0)
+                                    <= UNSIGNED(data_in_sig(i));
+                                p0_data_in_valid(i) <= '0';
+                            WHEN DATA_IN_OFF_UDP_HDR_LEN + 1 =>
+                                p0_udp_len(15 DOWNTO 8)
+                                    <= UNSIGNED(data_in_sig(i));
+                                p0_udp_len_valid <= true;
+                                p0_data_in_valid(i) <= '0';
+                            WHEN DATA_IN_OFF_UDP_HDR_CHK =>
+                                p0_udp_chk(7 DOWNTO 0)
+                                    <= UNSIGNED(data_in_sig(i));
+                                p0_data_in_valid(i) <= '0';
+                            WHEN DATA_IN_OFF_UDP_HDR_CHK + 1 =>
+                                p0_udp_chk(15 DOWNTO 8)
+                                    <= UNSIGNED(data_in_sig(i));
+                                p0_udp_chk_valid <= true;
+                                p0_data_in_valid(i) <= '0';
+                            WHEN OTHERS =>
+                                NULL;
+                        END CASE;
+                        p0_off_var := p0_off_var + 1;
+                    END IF;
+                END LOOP;
+                p0_len_read <= p0_off_var;
 
-            --
-            -- Stage 1: UDP pseudo and normal header checksumming
-            --
-            p1_data_in <= p0_data_in;
-            p1_data_in_valid <= p0_data_in_valid;
-            p1_data_in_start <= p0_data_in_start;
-            p1_data_in_end <= p0_data_in_end;
-            p1_data_in_err <= p0_data_in_err;
-            p1_udp_len <= p0_udp_len;
-            p1_udp_chk <= p0_udp_chk;
-            p1_len_read <= p0_len_read;
+                --
+                -- Stage 1: UDP pseudo and normal header checksumming
+                --
+                p1_data_in <= p0_data_in;
+                p1_data_in_valid <= p0_data_in_valid;
+                p1_data_in_start <= p0_data_in_start;
+                p1_data_in_end <= p0_data_in_end;
+                p1_data_in_err <= p0_data_in_err;
+                p1_udp_len <= p0_udp_len;
+                p1_udp_chk <= p0_udp_chk;
+                p1_len_read <= p0_len_read;
 
-            p1_chk_accum_var := p1_chk_accum;
-            IF p0_data_in_start = '1' THEN
-                p1_chk_accum_var := UNSIGNED(UDP_PROTO);
-            END IF;
-            -- The destination address, protocol, and length pseudo header
-            -- fields are not in the output data stream, so incorporate them
-            -- in the checksum here.
-            IF p0_addr_dst_valid THEN
-                p1_chk_accum_var := p1_chk_accum_var
-                    + UNSIGNED(p0_addr_dst(31 DOWNTO 16))
-                    + UNSIGNED(p0_addr_dst(15 DOWNTO 0));
-            END IF;
-            IF p0_udp_len_valid THEN
-                p1_chk_accum_var := p1_chk_accum_var + p0_udp_len;
-            END IF;
-            -- The UDP header's length and checksum fields are not sent to the
-            -- output data stream, so incorporate them into the checksum here.
-            -- Note: The length is included twice intentionally in this stage
-            IF p0_udp_len_valid THEN
-                p1_chk_accum_var := p1_chk_accum_var + p0_udp_len;
-            END IF;
-            IF p0_udp_chk_valid THEN
-                p1_chk_accum_var := p1_chk_accum_var + p0_udp_chk;
-            END IF;
-            p1_chk_accum <= p1_chk_accum_var;
+                p1_chk_accum_var := p1_chk_accum;
+                IF p0_data_in_start = '1' THEN
+                    p1_chk_accum_var := UNSIGNED(UDP_PROTO);
+                END IF;
+                -- The destination address, protocol, and length pseudo header
+                -- fields are not in the output data stream, so incorporate
+                -- them in the checksum here.
+                IF p0_addr_dst_valid THEN
+                    p1_chk_accum_var := p1_chk_accum_var
+                        + UNSIGNED(p0_addr_dst(31 DOWNTO 16))
+                        + UNSIGNED(p0_addr_dst(15 DOWNTO 0));
+                END IF;
+                IF p0_udp_len_valid THEN
+                    p1_chk_accum_var := p1_chk_accum_var + p0_udp_len;
+                END IF;
+                -- The UDP header's length and checksum fields are not sent to
+                -- the output data stream, so incorporate them into the
+                -- checksum here.  Note: The length is included twice
+                -- intentionally in this stage
+                IF p0_udp_len_valid THEN
+                    p1_chk_accum_var := p1_chk_accum_var + p0_udp_len;
+                END IF;
+                IF p0_udp_chk_valid THEN
+                    p1_chk_accum_var := p1_chk_accum_var + p0_udp_chk;
+                END IF;
+                p1_chk_accum <= p1_chk_accum_var;
 
-            --
-            -- Stage 2: Normal checksumming
-            --
-            p2_data_in <= p1_data_in;
-            p2_data_in_valid <= p1_data_in_valid;
-            p2_data_in_start <= p1_data_in_start;
-            p2_data_in_end <= p1_data_in_end;
-            p2_data_in_err <= p1_data_in_err;
-            p2_udp_len <= p1_udp_len;
-            p2_udp_chk <= p1_udp_chk;
-            p2_len_read <= p1_len_read;
+                --
+                -- Stage 2: Normal checksumming
+                --
+                p2_data_in <= p1_data_in;
+                p2_data_in_valid <= p1_data_in_valid;
+                p2_data_in_start <= p1_data_in_start;
+                p2_data_in_end <= p1_data_in_end;
+                p2_data_in_err <= p1_data_in_err;
+                p2_udp_len <= p1_udp_len;
+                p2_udp_chk <= p1_udp_chk;
+                p2_len_read <= p1_len_read;
 
-            p2_internal_off_var := p2_internal_off;
-            p2_chk_addend_var := p2_chk_addend;
-            p2_chk_accum_var := p1_chk_accum;
-            IF p1_data_in_start = '1' THEN
-                p2_internal_off_var := (OTHERS => '0');
-                p2_chk_addend_var := (OTHERS => '0');
-                p2_chk_accum_var := (OTHERS => '0');
-            END IF;
-            -- Note: If this is too slow, split into stages that handle ranges
-            -- of byte enables
-            FOR i IN 0 TO width - 1 LOOP
-                IF p1_data_in_valid(i) = '1' THEN
-                    IF 0 = p2_internal_off_var MOD 2 THEN
-                        p2_chk_addend_var(7 DOWNTO 0)
-                            := UNSIGNED(p1_data_in(i));
-                    ELSE
-                        p2_chk_addend_var(15 DOWNTO 8)
-                            := UNSIGNED(p1_data_in(i));
+                p2_internal_off_var := p2_internal_off;
+                p2_chk_addend_var := p2_chk_addend;
+                p2_chk_accum_var := p1_chk_accum;
+                IF p1_data_in_start = '1' THEN
+                    p2_internal_off_var := (OTHERS => '0');
+                    p2_chk_addend_var := (OTHERS => '0');
+                    p2_chk_accum_var := (OTHERS => '0');
+                END IF;
+                -- Note: If this is too slow, split into stages that handle
+                -- ranges of byte enables
+                FOR i IN 0 TO width - 1 LOOP
+                    IF p1_data_in_valid(i) = '1' THEN
+                        IF 0 = p2_internal_off_var MOD 2 THEN
+                            p2_chk_addend_var(7 DOWNTO 0)
+                                := UNSIGNED(p1_data_in(i));
+                        ELSE
+                            p2_chk_addend_var(15 DOWNTO 8)
+                                := UNSIGNED(p1_data_in(i));
+                            p2_chk_accum_var := p2_chk_accum_var
+                                + p2_chk_addend_var;
+                        END IF;
+                        p2_internal_off_var := p2_internal_off_var + 1;
+                    END IF;
+                END LOOP;
+                IF p1_data_in_end = '1' THEN
+                    -- account for non-word-aligned data length
+                    IF 1 = p2_internal_off_var MOD 2 THEN
+                        p2_chk_addend_var(15 DOWNTO 8) := (OTHERS => '0');
                         p2_chk_accum_var := p2_chk_accum_var
                             + p2_chk_addend_var;
                     END IF;
-                    p2_internal_off_var := p2_internal_off_var + 1;
                 END IF;
-            END LOOP;
-            IF p1_data_in_end = '1' THEN
-                -- account for non-word-aligned data length
-                IF 1 = p2_internal_off_var MOD 2 THEN
-                    p2_chk_addend_var(15 DOWNTO 8) := (OTHERS => '0');
-                    p2_chk_accum_var := p2_chk_accum_var + p2_chk_addend_var;
+                p2_chk_accum <= p2_chk_accum_var;
+                p2_chk_addend <= p2_chk_addend_var;
+                p2_internal_off <= p2_internal_off_var;
+
+                --
+                -- Stage 3: Finish checksum
+                --
+                p3_data_in <= p2_data_in;
+                p3_data_in_valid <= p2_data_in_valid;
+                p3_data_in_start <= p2_data_in_start;
+                p3_data_in_end <= p2_data_in_end;
+                p3_data_in_err <= p2_data_in_err;
+                p3_udp_len <= p2_udp_len;
+                p3_udp_chk <= p2_udp_chk;
+                p3_len_read <= p2_len_read;
+
+                p3_chk_final <= p2_chk_accum(31 DOWNTO 16)
+                    + p2_chk_accum(15 DOWNTO 0);
+
+                --
+                -- Stage 4: Validate checksum and perform length checks
+                --
+                p4_data_in <= p3_data_in;
+                p4_data_in_valid <= p3_data_in_valid;
+                p4_data_in_start <= p3_data_in_start;
+                p4_data_in_end <= p3_data_in_end;
+                p4_data_in_err <= p3_data_in_err;
+
+                IF p3_len_read >= DATA_IN_OFF_UDP_HDR_PORT_SRC THEN
+                    -- Datagram read is larger than the header states
+                    IF p3_udp_len < p3_len_read
+                            - DATA_IN_OFF_UDP_HDR_PORT_SRC THEN
+                        p4_data_in_err <= '1';
+                    END IF;
                 END IF;
-            END IF;
-            p2_chk_accum <= p2_chk_accum_var;
-            p2_chk_addend <= p2_chk_addend_var;
-            p2_internal_off <= p2_internal_off_var;
-
-            --
-            -- Stage 3: Finish checksum
-            --
-            p3_data_in <= p2_data_in;
-            p3_data_in_valid <= p2_data_in_valid;
-            p3_data_in_start <= p2_data_in_start;
-            p3_data_in_end <= p2_data_in_end;
-            p3_data_in_err <= p2_data_in_err;
-            p3_udp_len <= p2_udp_len;
-            p3_udp_chk <= p2_udp_chk;
-            p3_len_read <= p2_len_read;
-
-            p3_chk_final <= p2_chk_accum(31 DOWNTO 16)
-                + p2_chk_accum(15 DOWNTO 0);
-
-            --
-            -- Stage 4: Validate checksum and perform length checks
-            --
-            p4_data_in <= p3_data_in;
-            p4_data_in_valid <= p3_data_in_valid;
-            p4_data_in_start <= p3_data_in_start;
-            p4_data_in_end <= p3_data_in_end;
-            p4_data_in_err <= p3_data_in_err;
-
-            IF p3_len_read >= DATA_IN_OFF_UDP_HDR_PORT_SRC THEN
-                -- Datagram read is larger than the header states
-                IF p3_udp_len < p3_len_read
-                        - DATA_IN_OFF_UDP_HDR_PORT_SRC THEN
-                    p4_data_in_err <= '1';
-                END IF;
-            END IF;
-            IF p3_data_in_end = '1' THEN
-                IF p3_udp_chk /= 0 AND p3_chk_final /= 0 THEN
-                    p4_data_in_err <= '1';
-                END IF;
-                IF p3_udp_len /= p3_len_read THEN
-                    p4_data_in_err <= '1';
+                IF p3_data_in_end = '1' THEN
+                    IF p3_udp_chk /= 0 AND p3_chk_final /= 0 THEN
+                        p4_data_in_err <= '1';
+                    END IF;
+                    IF p3_udp_len /= p3_len_read THEN
+                        p4_data_in_err <= '1';
+                    END IF;
                 END IF;
             END IF;
         END IF;
