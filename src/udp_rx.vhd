@@ -335,7 +335,9 @@ BEGIN
 
                 p1_chk_accum_var := p1_chk_accum;
                 IF p0_data_in_start = '1' THEN
-                    p1_chk_accum_var := UNSIGNED(UDP_PROTO);
+                    p1_chk_accum_var := (OTHERS => '0');
+                    p1_chk_accum_var(UDP_PROTO'length - 1 DOWNTO 0)
+                        := UNSIGNED(UDP_PROTO);
                 END IF;
                 -- The destination address, protocol, and length pseudo header
                 -- fields are not in the output data stream, so incorporate
