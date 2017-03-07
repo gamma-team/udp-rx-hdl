@@ -243,6 +243,12 @@ BEGIN
                 IF Data_in_start = '1' THEN
                     p0_off_var := (OTHERS => '0');
                 END IF;
+                p0_addr_src_valid <= false;
+                p0_addr_dst_valid <= false;
+                p0_udp_port_dst_valid <= false;
+                p0_udp_port_src_valid <= false;
+                p0_udp_len_valid <= false;
+                p0_udp_chk_valid <= false;
                 FOR i IN 0 TO width - 1 LOOP
                     IF Data_in_valid(i) = '1' THEN
                         -- This case statement is quite large, could be split
