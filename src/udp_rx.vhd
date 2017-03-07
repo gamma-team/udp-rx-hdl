@@ -161,19 +161,6 @@ BEGIN
     END GENERATE;
 
     PROCESS(Clk)
-        FUNCTION n_valid(bits : STD_LOGIC_VECTOR(width - 1 DOWNTO 0))
-            RETURN UNSIGNED(15 DOWNTO 0) IS
-            VARIABLE accum : UNSIGNED(15 DOWNTO 0);
-        BEGIN
-            accum := (OTHERS => '0');
-            FOR i IN bits'length - 1 DOWNTO 0 LOOP
-                IF bits(i) = '1' THEN
-                    accum := accum + 1;
-                END IF;
-            END LOOP;
-            RETURN accum;
-        END FUNCTION;
-
         VARIABLE p0_off_var : UNSIGNED(p0_len_read'length - 1 DOWNTO 0);
         VARIABLE p1_chk_accum_var
             : UNSIGNED(p1_chk_accum'length - 1 DOWNTO 0);
