@@ -86,6 +86,7 @@ ARCHITECTURE normal OF udp_rx IS
     CONSTANT DATA_IN_OFF_UDP_HDR_PORT_DST : INTEGER := 11;
     CONSTANT DATA_IN_OFF_UDP_HDR_LEN : INTEGER := 13;
     CONSTANT DATA_IN_OFF_UDP_HDR_CHK : INTEGER := 15;
+    CONSTANT DATA_IN_OFF_UDP_PAYLOAD : INTEGER := 17;
 
     TYPE DATA_BUS IS ARRAY (width - 1 DOWNTO 0)
         OF STD_LOGIC_VECTOR(7 DOWNTO 0);
@@ -252,34 +253,36 @@ BEGIN
                 p0_udp_chk_valid <= false;
                 FOR i IN 0 TO width - 1 LOOP
                     IF Data_in_valid(i) = '1' THEN
+                        p0_data_in_valid(i) <= '1';
                         -- This case statement is quite large, could be split
                         -- into multiple stages.
                         CASE TO_INTEGER(p0_off_var) IS
                             WHEN DATA_IN_OFF_ADDR_SRC =>
-                                p0_addr_src(7 DOWNTO 0) <= data_in_sig(i);
+                                p0_addr_src(31 DOWNTO 24) <= data_in_sig(i);
                             WHEN DATA_IN_OFF_ADDR_SRC + 1 =>
-                                p0_addr_src(15 DOWNTO 8)
-                                    <= data_in_sig(i);
-                            WHEN DATA_IN_OFF_ADDR_SRC + 2 =>
                                 p0_addr_src(23 DOWNTO 16)
                                     <= data_in_sig(i);
+                            WHEN DATA_IN_OFF_ADDR_SRC + 2 =>
+                                p0_addr_src(15 DOWNTO 8)
+                                    <= data_in_sig(i);
                             WHEN DATA_IN_OFF_ADDR_SRC + 3 =>
-                                p0_addr_src(31 DOWNTO 24)
+                                p0_addr_src(7 DOWNTO 0)
                                     <= data_in_sig(i);
                                 p0_addr_src_valid <= true;
                             WHEN DATA_IN_OFF_ADDR_DST =>
-                                p0_addr_dst(7 DOWNTO 0) <= data_in_sig(i);
-                                p0_data_in_valid(i) <= '0';
-                            WHEN DATA_IN_OFF_ADDR_DST + 1 =>
-                                p0_addr_dst(15 DOWNTO 8)
+                                p0_addr_dst(31 DOWNTO 24)
                                     <= data_in_sig(i);
                                 p0_data_in_valid(i) <= '0';
-                            WHEN DATA_IN_OFF_ADDR_DST + 2 =>
+                            WHEN DATA_IN_OFF_ADDR_DST + 1 =>
                                 p0_addr_dst(23 DOWNTO 16)
                                     <= data_in_sig(i);
                                 p0_data_in_valid(i) <= '0';
+                            WHEN DATA_IN_OFF_ADDR_DST + 2 =>
+                                p0_addr_dst(15 DOWNTO 8)
+                                    <= data_in_sig(i);
+                                p0_data_in_valid(i) <= '0';
                             WHEN DATA_IN_OFF_ADDR_DST + 3 =>
-                                p0_addr_dst(31 DOWNTO 24)
+                                p0_addr_dst(7 DOWNTO 0)
                                     <= data_in_sig(i);
                                 p0_addr_dst_valid <= true;
                                 p0_data_in_valid(i) <= '0';
@@ -289,34 +292,34 @@ BEGIN
                                 END IF;
                                 p0_data_in_valid(i) <= '0';
                             WHEN DATA_IN_OFF_UDP_HDR_PORT_SRC =>
-                                p0_udp_port_src(7 DOWNTO 0)
+                                p0_udp_port_src(15 DOWNTO 8)
                                     <= data_in_sig(i);
                             WHEN DATA_IN_OFF_UDP_HDR_PORT_SRC + 1 =>
-                                p0_udp_port_src(15 DOWNTO 8)
+                                p0_udp_port_src(7 DOWNTO 0)
                                     <= data_in_sig(i);
                                 p0_udp_port_src_valid <= true;
                             WHEN DATA_IN_OFF_UDP_HDR_PORT_DST =>
-                                p0_udp_port_dst(7 DOWNTO 0)
+                                p0_udp_port_dst(15 DOWNTO 8)
                                     <= data_in_sig(i);
                             WHEN DATA_IN_OFF_UDP_HDR_PORT_DST + 1 =>
-                                p0_udp_port_dst(15 DOWNTO 8)
+                                p0_udp_port_dst(7 DOWNTO 0)
                                     <= data_in_sig(i);
                                 p0_udp_port_dst_valid <= true;
                             WHEN DATA_IN_OFF_UDP_HDR_LEN =>
-                                p0_udp_len(7 DOWNTO 0)
+                                p0_udp_len(15 DOWNTO 8)
                                     <= UNSIGNED(data_in_sig(i));
                                 p0_data_in_valid(i) <= '0';
                             WHEN DATA_IN_OFF_UDP_HDR_LEN + 1 =>
-                                p0_udp_len(15 DOWNTO 8)
+                                p0_udp_len(7 DOWNTO 0)
                                     <= UNSIGNED(data_in_sig(i));
                                 p0_udp_len_valid <= true;
                                 p0_data_in_valid(i) <= '0';
                             WHEN DATA_IN_OFF_UDP_HDR_CHK =>
-                                p0_udp_chk(7 DOWNTO 0)
+                                p0_udp_chk(15 DOWNTO 8)
                                     <= UNSIGNED(data_in_sig(i));
                                 p0_data_in_valid(i) <= '0';
                             WHEN DATA_IN_OFF_UDP_HDR_CHK + 1 =>
-                                p0_udp_chk(15 DOWNTO 8)
+                                p0_udp_chk(7 DOWNTO 0)
                                     <= UNSIGNED(data_in_sig(i));
                                 p0_udp_chk_valid <= true;
                                 p0_data_in_valid(i) <= '0';
@@ -346,23 +349,29 @@ BEGIN
                     p1_chk_accum_var(UDP_PROTO'length - 1 DOWNTO 0)
                         := UNSIGNED(UDP_PROTO);
                 END IF;
-                -- The destination address, protocol, and length pseudo header
-                -- fields are not in the output data stream, so incorporate
-                -- them in the checksum here.
+                IF p0_addr_src_valid THEN
+                    p1_chk_accum_var := p1_chk_accum_var
+                        + UNSIGNED(p0_addr_src(31 DOWNTO 16))
+                        + UNSIGNED(p0_addr_src(15 DOWNTO 0));
+                END IF;
                 IF p0_addr_dst_valid THEN
                     p1_chk_accum_var := p1_chk_accum_var
                         + UNSIGNED(p0_addr_dst(31 DOWNTO 16))
                         + UNSIGNED(p0_addr_dst(15 DOWNTO 0));
                 END IF;
-                IF p0_udp_len_valid THEN
-                    p1_chk_accum_var := p1_chk_accum_var + p0_udp_len;
+                IF p0_udp_port_src_valid THEN
+                    p1_chk_accum_var := p1_chk_accum_var
+                        + UNSIGNED(p0_udp_port_src);
                 END IF;
-                -- The UDP header's length and checksum fields are not sent to
-                -- the output data stream, so incorporate them into the
-                -- checksum here.  Note: The length is included twice
-                -- intentionally in this stage
+                IF p0_udp_port_dst_valid THEN
+                    p1_chk_accum_var := p1_chk_accum_var
+                        + UNSIGNED(p0_udp_port_dst);
+                END IF;
+                -- Note: The length is included twice because of the pseudo
+                -- header.
                 IF p0_udp_len_valid THEN
-                    p1_chk_accum_var := p1_chk_accum_var + p0_udp_len;
+                    p1_chk_accum_var := p1_chk_accum_var + p0_udp_len
+                        + p0_udp_len;
                 END IF;
                 IF p0_udp_chk_valid THEN
                     p1_chk_accum_var := p1_chk_accum_var + p0_udp_chk;
@@ -370,7 +379,7 @@ BEGIN
                 p1_chk_accum <= p1_chk_accum_var;
 
                 --
-                -- Stage 2: Normal checksumming
+                -- Stage 2: Data payload checksumming
                 --
                 p2_data_in <= p1_data_in;
                 p2_data_in_valid <= p1_data_in_valid;
@@ -393,14 +402,17 @@ BEGIN
                 -- ranges of byte enables
                 FOR i IN 0 TO width - 1 LOOP
                     IF p1_data_in_valid(i) = '1' THEN
-                        IF 0 = p2_internal_off_var MOD 2 THEN
-                            p2_chk_addend_var(7 DOWNTO 0)
-                                := UNSIGNED(p1_data_in(i));
-                        ELSE
-                            p2_chk_addend_var(15 DOWNTO 8)
-                                := UNSIGNED(p1_data_in(i));
-                            p2_chk_accum_var := p2_chk_accum_var
-                                + p2_chk_addend_var;
+                        IF p2_internal_off_var
+                                >= DATA_IN_OFF_UDP_PAYLOAD THEN
+                            IF 0 = p2_internal_off_var MOD 2 THEN
+                                p2_chk_addend_var(7 DOWNTO 0)
+                                    := UNSIGNED(p1_data_in(i));
+                            ELSE
+                                p2_chk_addend_var(15 DOWNTO 8)
+                                    := UNSIGNED(p1_data_in(i));
+                                p2_chk_accum_var := p2_chk_accum_var
+                                    + p2_chk_addend_var;
+                            END IF;
                         END IF;
                         p2_internal_off_var := p2_internal_off_var + 1;
                     END IF;
