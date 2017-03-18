@@ -81,6 +81,7 @@ ARCHITECTURE normal OF udp_rx IS
     CONSTANT DATA_IN_OFF_ADDR_SRC : INTEGER := 0;
     CONSTANT DATA_IN_OFF_ADDR_DST : INTEGER := 4;
     CONSTANT DATA_IN_OFF_PROTO : INTEGER := 8;
+    CONSTANT DATA_IN_HDR_LEN : INTEGER := 9;
     CONSTANT DATA_IN_OFF_UDP_HDR_PORT_SRC : INTEGER := 9;
     CONSTANT DATA_IN_OFF_UDP_HDR_PORT_DST : INTEGER := 11;
     CONSTANT DATA_IN_OFF_UDP_HDR_LEN : INTEGER := 13;
@@ -440,18 +441,17 @@ BEGIN
                 p4_data_in_end <= p3_data_in_end;
                 p4_data_in_err <= p3_data_in_err;
 
-                IF p3_len_read >= DATA_IN_OFF_UDP_HDR_PORT_SRC THEN
+                IF p3_len_read > DATA_IN_HDR_LEN THEN
                     -- Datagram read is larger than the header states
-                    IF p3_udp_len < p3_len_read
-                            - DATA_IN_OFF_UDP_HDR_PORT_SRC THEN
+                    IF p3_udp_len < p3_len_read - DATA_IN_HDR_LEN THEN
                         p4_data_in_err <= '1';
                     END IF;
                 END IF;
                 IF p3_data_in_end = '1' THEN
-                    IF p3_udp_chk /= 0 AND p3_chk_final /= 0 THEN
+                    IF p3_udp_chk /= 0 AND p3_chk_final /= 65535 THEN
                         p4_data_in_err <= '1';
                     END IF;
-                    IF p3_udp_len /= p3_len_read THEN
+                    IF p3_udp_len /= p3_len_read - DATA_IN_HDR_LEN  THEN
                         p4_data_in_err <= '1';
                     END IF;
                 END IF;
