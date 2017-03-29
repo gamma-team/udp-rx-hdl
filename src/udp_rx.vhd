@@ -390,6 +390,7 @@ BEGIN
                 p2_udp_chk <= p1_udp_chk;
                 p2_len_read <= p1_len_read;
 
+                -- TODO: change internal offset variable to just a boolean
                 p2_internal_off_var := p2_internal_off;
                 p2_chk_addend_var := p2_chk_addend;
                 p2_chk_accum_var := p1_chk_accum;
@@ -400,29 +401,28 @@ BEGIN
                 END IF;
                 -- Note: If this is too slow, split into stages that handle
                 -- ranges of byte enables
-                FOR i IN 0 TO width - 1 LOOP
-                    IF p1_data_in_valid(i) = '1' THEN
-                        IF p2_internal_off_var
-                                >= DATA_IN_OFF_UDP_PAYLOAD THEN
+                IF p1_len_read >= DATA_IN_OFF_UDP_PAYLOAD THEN
+                    FOR i IN 0 TO width - 1 LOOP
+                        IF p1_data_in_valid(i) = '1' THEN
                             IF 0 = p2_internal_off_var MOD 2 THEN
-                                p2_chk_addend_var(7 DOWNTO 0)
+                                p2_chk_addend_var(15 DOWNTO 8)
                                     := UNSIGNED(p1_data_in(i));
                             ELSE
-                                p2_chk_addend_var(15 DOWNTO 8)
+                                p2_chk_addend_var(7 DOWNTO 0)
                                     := UNSIGNED(p1_data_in(i));
                                 p2_chk_accum_var := p2_chk_accum_var
                                     + p2_chk_addend_var;
                             END IF;
+                            p2_internal_off_var := p2_internal_off_var + 1;
                         END IF;
-                        p2_internal_off_var := p2_internal_off_var + 1;
-                    END IF;
-                END LOOP;
-                IF p1_data_in_end = '1' THEN
-                    -- account for non-word-aligned data length
-                    IF 1 = p2_internal_off_var MOD 2 THEN
-                        p2_chk_addend_var(15 DOWNTO 8) := (OTHERS => '0');
-                        p2_chk_accum_var := p2_chk_accum_var
-                            + p2_chk_addend_var;
+                    END LOOP;
+                    IF p1_data_in_end = '1' THEN
+                        -- account for non-word-aligned data length
+                        IF 1 = p2_internal_off_var MOD 2 THEN
+                            p2_chk_addend_var(7 DOWNTO 0) := (OTHERS => '0');
+                            p2_chk_accum_var := p2_chk_accum_var
+                                + p2_chk_addend_var;
+                        END IF;
                     END IF;
                 END IF;
                 p2_chk_accum <= p2_chk_accum_var;
