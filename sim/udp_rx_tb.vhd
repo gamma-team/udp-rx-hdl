@@ -5,16 +5,16 @@ use ieee.std_logic_textio.all;
 use std.textio.all;
 
 
-entity udp_tx_tb is
+entity udp_rx_tb is
 GENERIC (
     -- Test bench Generics
     TB_width : POSITIVE := 8
 );
-end udp_tx_tb;
+end udp_rx_tb;
 
-architecture Behavioral of udp_tx_tb is
+architecture Behavioral of udp_rx_tb is
 
-COMPONENT udp_tx
+COMPONENT udp_rx
     GENERIC (
         width : POSITIVE := 8
     );
@@ -38,8 +38,8 @@ PORT (
 );
 END COMPONENT;
 
-file In_file : text open read_mode is "C:\tutorials\udp_tx\input.txt";-- Change the file name + Directory
-file Out_file : text open write_mode is "C:\tutorials\udp_tx\output.txt";-- Change the file name + Directory
+file In_file : text open read_mode is "C:\tutorials\udp_rx\input.txt";-- Change the file name
+file Out_file : text open write_mode is "C:\tutorials\udp_rx\output.txt";-- Change the file name
 
 --Clock and Reset signals
 signal Clk: STD_LOGIC := '0';
@@ -59,12 +59,13 @@ signal Data_out_start : STD_LOGIC;
 signal Data_out_end : STD_LOGIC;
 signal Data_out_err : STD_LOGIC;
 
+
 signal TB_Completed: STD_LOGIC:= '0';
 signal Data_to_file: STD_LOGIC:= '0';
 
 begin
 
-DUT: udp_tx port map (
+DUT: udp_rx port map (
     Clk => Clk,
     Rst => Rst,
 	
@@ -82,44 +83,45 @@ DUT: udp_tx port map (
 );
 
 
+-- Read file process
 process
-
     variable Buff_in: LINE;
     variable Data_input : STD_LOGIC_VECTOR(TB_width * 8 - 1 downto 0);
     variable Data_valid_input : STD_LOGIC_VECTOR(TB_width - 1 downto 0);
-    begin
+begin
     
     Data_in <= (others => '0');
     Data_in_valid <= (others => '0');
     Data_in_start <= '0';
     Data_in_end <= '0';
-    --Data_in_err <= '0';
-    
+    Data_in_err <= '0';
     -- wait for reset process to finish
     wait for 100 ns;
-    wait until rising_edge(Clk);
+	wait until rising_edge(Clk);
     Data_in_start <= '1';
     wait until rising_edge(Clk); 
     
-    report "TB - Loadign Data messages from file...";
+    report "TB - Loadign IPv4 Packets from file...";
     while not endfile(In_file) loop
         readline(In_file, Buff_in);
         hread(Buff_in, Data_input); -- read first 8 bytes in file
         hread(Buff_in, Data_valid_input); -- read data_in_valid byte
+        
         Data_in_start <= '0';
         Data_in_valid <= Data_valid_input;
         Data_in <= Data_input;
+
         wait until rising_edge(Clk);
     end loop;
-    
+	
     Data_in_end <= '1';
     Data_in <= (others => '0');
     Data_in_valid <= (others => '0');
     file_close(In_file);
-    report "TB - Data messages have been loaded successfully";
+    report "TB - IPv4 packets has been loaded successfully";
     TB_Completed <= '1';
-    wait until rising_edge(Clk);
-    Data_in_end <= '0';
+	wait until rising_edge(Clk);
+	Data_in_end <= '0';
     wait;
 end process;    
 
@@ -152,7 +154,6 @@ begin
         wait;
     end if;
 end process;
-
 
 -- clk process
 process
