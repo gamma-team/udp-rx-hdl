@@ -1,5 +1,3 @@
--- TODO: Check byte order
---
 -- Copyright 2017 Patrick Gauvin
 --
 -- Redistribution and use in source and binary forms, with or without
@@ -42,9 +40,9 @@ ENTITY udp_rx IS
         Rst : IN STD_LOGIC;
         -- Data input bus for data from the IP layer.
         -- Byte offsets (all integer types are big endian):
-        -- 0: Source IP address
-        -- 4: Destination IP address
-        -- 8: Protocol
+        -- 0: Protocol
+        -- 1: Source IP address
+        -- 5: Destination IP address
         -- 9: IP datagram's data section
         Data_in : IN STD_LOGIC_VECTOR(width * 8 - 1 DOWNTO 0);
         -- Assertion indicates which Data_in bytes are valid.
@@ -96,9 +94,9 @@ ARCHITECTURE normal OF udp_rx IS
     END COMPONENT;
 
     CONSTANT UDP_PROTO : STD_LOGIC_VECTOR(7 DOWNTO 0) := x"11";
-    CONSTANT DATA_IN_OFF_ADDR_SRC : INTEGER := 0;
-    CONSTANT DATA_IN_OFF_ADDR_DST : INTEGER := 4;
-    CONSTANT DATA_IN_OFF_PROTO : INTEGER := 8;
+    CONSTANT DATA_IN_OFF_PROTO : INTEGER := 0;
+    CONSTANT DATA_IN_OFF_ADDR_SRC : INTEGER := 1;
+    CONSTANT DATA_IN_OFF_ADDR_DST : INTEGER := 5;
     CONSTANT DATA_IN_HDR_LEN : INTEGER := 9;
     CONSTANT DATA_IN_OFF_UDP_HDR_PORT_SRC : INTEGER := 9;
     CONSTANT DATA_IN_OFF_UDP_HDR_PORT_DST : INTEGER := 11;
@@ -341,23 +339,23 @@ BEGIN
                 -- TODO: Make this generic, ran out of time
                 IF packed_data_in_valid /= x"00" AND NOT p0_hdr_done THEN
                     IF NOT p0_started THEN
-                        p0_addr_src(31 DOWNTO 24) <= packed_data_in(0);
-                        p0_addr_src(23 DOWNTO 16) <= packed_data_in(1);
-                        p0_addr_src(15 DOWNTO 8) <= packed_data_in(2);
-                        p0_addr_src(7 DOWNTO 0) <= packed_data_in(3);
-                        p0_addr_src_valid <= true;
-                        p0_addr_dst(31 DOWNTO 24) <= packed_data_in(4);
-                        p0_addr_dst(23 DOWNTO 16) <= packed_data_in(5);
-                        p0_addr_dst(15 DOWNTO 8) <= packed_data_in(6);
-                        p0_addr_dst(7 DOWNTO 0) <= packed_data_in(7);
-                        p0_addr_dst_valid <= true;
-                        p0_data_in_valid <= (OTHERS => '0');
-                        -- Source address
-                        p0_data_in_valid(3 DOWNTO 0) <= (OTHERS => '1');
-                    ELSIF p0_addr_dst_valid THEN
                         IF packed_data_in(0) /= UDP_PROTO THEN
                             p0_data_in_err <= '1';
                         END IF;
+                        p0_addr_src(31 DOWNTO 24) <= packed_data_in(1);
+                        p0_addr_src(23 DOWNTO 16) <= packed_data_in(2);
+                        p0_addr_src(15 DOWNTO 8) <= packed_data_in(3);
+                        p0_addr_src(7 DOWNTO 0) <= packed_data_in(4);
+                        p0_addr_src_valid <= true;
+                        p0_addr_dst(31 DOWNTO 24) <= packed_data_in(5);
+                        p0_addr_dst(23 DOWNTO 16) <= packed_data_in(6);
+                        p0_addr_dst(15 DOWNTO 8) <= packed_data_in(7);
+                        p0_data_in_valid <= (OTHERS => '0');
+                        -- Source address
+                        p0_data_in_valid(4 DOWNTO 1) <= "1111";
+                    ELSIF p0_addr_src_valid THEN
+                        p0_addr_dst(7 DOWNTO 0) <= packed_data_in(0);
+                        p0_addr_dst_valid <= true;
                         p0_udp_port_src(15 DOWNTO 8) <= packed_data_in(1);
                         p0_udp_port_src(7 DOWNTO 0) <= packed_data_in(2);
                         p0_udp_port_src_valid <= true;
