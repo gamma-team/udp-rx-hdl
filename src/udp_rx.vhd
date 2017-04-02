@@ -77,6 +77,24 @@ ENTITY udp_rx IS
 END ENTITY;
 
 ARCHITECTURE normal OF udp_rx IS
+    COMPONENT stream_packer IS
+        GENERIC (
+            width : POSITIVE := 4
+        );
+        PORT (
+            Clk : IN STD_LOGIC;
+            Rstn : IN STD_LOGIC;
+            In_data : IN STD_LOGIC_VECTOR(width * 8 - 1 DOWNTO 0);
+            In_valid : IN STD_LOGIC_VECTOR(width - 1 DOWNTO 0);
+            In_last : IN STD_LOGIC;
+            In_ready : OUT STD_LOGIC;
+            Out_data : OUT STD_LOGIC_VECTOR(width * 8 - 1 DOWNTO 0);
+            Out_valid : OUT STD_LOGIC_VECTOR(width - 1 DOWNTO 0);
+            Out_last : OUT STD_LOGIC;
+            Out_ready : IN STD_LOGIC
+        );
+    END COMPONENT;
+
     CONSTANT UDP_PROTO : STD_LOGIC_VECTOR(7 DOWNTO 0) := x"11";
     CONSTANT DATA_IN_OFF_ADDR_SRC : INTEGER := 0;
     CONSTANT DATA_IN_OFF_ADDR_DST : INTEGER := 4;
@@ -90,6 +108,8 @@ ARCHITECTURE normal OF udp_rx IS
 
     TYPE DATA_BUS IS ARRAY (width - 1 DOWNTO 0)
         OF STD_LOGIC_VECTOR(7 DOWNTO 0);
+
+    SIGNAL rstn : STD_LOGIC;
 
     SIGNAL p0_data_in : DATA_BUS;
     SIGNAL p0_data_in_valid
@@ -112,6 +132,8 @@ ARCHITECTURE normal OF udp_rx IS
     -- Number of bytes read on input stream, 17 bits so a full UDP datagram
     -- plus our extra information is countable.
     SIGNAL p0_len_read : UNSIGNED(16 DOWNTO 0);
+    SIGNAL p0_started : BOOLEAN;
+    SIGNAL p0_hdr_done : BOOLEAN;
 
     SIGNAL p1_data_in : DATA_BUS;
     SIGNAL p1_data_in_valid
@@ -155,15 +177,57 @@ ARCHITECTURE normal OF udp_rx IS
     SIGNAL p4_data_in_end : STD_LOGIC;
     SIGNAL p4_data_in_err : STD_LOGIC;
 
-    SIGNAL data_in_sig : DATA_BUS;
+    SIGNAL data_in_reg : DATA_BUS;
+    SIGNAL data_in_valid_reg : STD_LOGIC_VECTOR(Data_in_valid'range);
+    SIGNAL data_in_start_reg : STD_LOGIC;
+    SIGNAL data_in_end_reg : STD_LOGIC;
+    SIGNAL data_in_err_reg : STD_LOGIC;
+
+    SIGNAL packed_data_in : DATA_BUS;
+    SIGNAL packed_data_in_sig
+        : STD_LOGIC_VECTOR(packed_data_in'length * 8 - 1 DOWNTO 0);
+    SIGNAL packed_data_in_valid : STD_LOGIC_VECTOR(Data_in_valid'range);
+    SIGNAL packed_data_in_start : STD_LOGIC;
+    SIGNAL packed_data_in_end : STD_LOGIC;
+    SIGNAL packed_data_in_err : STD_LOGIC;
 BEGIN
-    -- Input signal wiring
+    rstn <= NOT Rst;
+
     gen_in_data: FOR i IN 0 TO width - 1 GENERATE
-        data_in_sig(i) <= Data_in((i + 1) * 8 - 1 DOWNTO i * 8);
+        packed_data_in(i) <= packed_data_in_sig((i + 1) * 8 - 1 DOWNTO i * 8);
     END GENERATE;
+    c_input_stream_packer: stream_packer
+        GENERIC MAP (
+            width => Data_in'length / 8
+        )
+        PORT MAP (
+            Clk => Clk,
+            Rstn => rstn,
+            In_data => Data_in,
+            In_valid => Data_in_valid,
+            In_last => Data_in_end,
+            In_ready => OPEN,
+            Out_data => packed_data_in_sig,
+            Out_valid => packed_data_in_valid,
+            Out_last => packed_data_in_end,
+            Out_ready => '1'
+        );
 
     PROCESS(Clk)
-        VARIABLE p0_off_var : UNSIGNED(p0_len_read'length - 1 DOWNTO 0);
+        FUNCTION n_valid(v : STD_LOGIC_VECTOR)
+            RETURN INTEGER IS
+            VARIABLE count : INTEGER;
+        BEGIN
+            count := 0;
+            FOR i IN v'range LOOP
+                IF v(i) = '1' THEN
+                    count := count + 1;
+                END IF;
+            END LOOP;
+            RETURN count;
+        END FUNCTION;
+
+        VARIABLE p0_len_read_var : UNSIGNED(p0_len_read'length - 1 DOWNTO 0);
         VARIABLE p1_chk_accum_var
             : UNSIGNED(p1_chk_accum'length - 1 DOWNTO 0);
         VARIABLE p2_chk_accum_var
@@ -175,6 +239,11 @@ BEGIN
     BEGIN
         IF rising_edge(Clk) THEN
             IF Rst = '1' THEN
+                data_in_reg <= (OTHERS => (OTHERS => '0'));
+                data_in_valid_reg <= (OTHERS => '0');
+                data_in_start_reg <= '0';
+                data_in_end_reg <= '0';
+                data_in_err_reg <= '0';
                 p0_data_in <= (OTHERS => x"00");
                 p0_data_in_valid <= (OTHERS => '0');
                 p0_data_in_start <= '0';
@@ -193,6 +262,8 @@ BEGIN
                 p0_udp_len_valid <= false;
                 p0_udp_chk_valid <= false;
                 p0_len_read <= (OTHERS => '0');
+                p0_started <= false;
+                p0_hdr_done <= false;
 
                 p1_data_in <= (OTHERS => x"00");
                 p1_data_in_valid <= (OTHERS => '0');
@@ -232,104 +303,89 @@ BEGIN
                 p4_data_in_end <= '0';
                 p4_data_in_err <= '0';
             ELSE
+                -- Input signal wiring
+                FOR i IN data_in_reg'range LOOP
+                    data_in_reg(i) <= Data_in((i + 1) * 8 - 1 DOWNTO i * 8);
+                END LOOP;
+                data_in_valid_reg <= Data_in_valid;
+                data_in_start_reg <= Data_in_start;
+                data_in_end_reg <= Data_in_end;
+                data_in_err_reg <= Data_in_err;
+
                 --
                 -- Pipeline stage 0: Byte decoding
                 --
-                p0_data_in <= data_in_sig;
-                p0_data_in_valid <= Data_in_valid;
-                p0_data_in_start <= Data_in_start;
-                p0_data_in_end <= Data_in_end;
-                p0_data_in_err <= Data_in_err;
+                p0_data_in <= packed_data_in;
+                p0_data_in_valid <= packed_data_in_valid;
+                p0_data_in_end <= packed_data_in_end;
+                p0_data_in_err <= '0'; -- FIXME --packed_data_in_err;
 
-                p0_off_var := p0_len_read;
-                IF Data_in_start = '1' THEN
-                    p0_off_var := (OTHERS => '0');
+                p0_len_read_var := p0_len_read;
+                p0_data_in_start <= '0';
+                IF NOT p0_started AND packed_data_in_valid /= x"00" THEN
+                    p0_started <= true;
+                    p0_data_in_start <= '1';
+                    p0_len_read_var := (OTHERS => '0');
                 END IF;
+                IF packed_data_in_end = '1' THEN
+                    p0_started <= false;
+                    p0_hdr_done <= false;
+                END IF;
+
                 p0_addr_src_valid <= false;
                 p0_addr_dst_valid <= false;
                 p0_udp_port_dst_valid <= false;
                 p0_udp_port_src_valid <= false;
                 p0_udp_len_valid <= false;
                 p0_udp_chk_valid <= false;
-                FOR i IN 0 TO width - 1 LOOP
-                    IF Data_in_valid(i) = '1' THEN
-                        p0_data_in_valid(i) <= '1';
-                        -- This case statement is quite large, could be split
-                        -- into multiple stages.
-                        CASE TO_INTEGER(p0_off_var) IS
-                            WHEN DATA_IN_OFF_ADDR_SRC =>
-                                p0_addr_src(31 DOWNTO 24) <= data_in_sig(i);
-                            WHEN DATA_IN_OFF_ADDR_SRC + 1 =>
-                                p0_addr_src(23 DOWNTO 16)
-                                    <= data_in_sig(i);
-                            WHEN DATA_IN_OFF_ADDR_SRC + 2 =>
-                                p0_addr_src(15 DOWNTO 8)
-                                    <= data_in_sig(i);
-                            WHEN DATA_IN_OFF_ADDR_SRC + 3 =>
-                                p0_addr_src(7 DOWNTO 0)
-                                    <= data_in_sig(i);
-                                p0_addr_src_valid <= true;
-                            WHEN DATA_IN_OFF_ADDR_DST =>
-                                p0_addr_dst(31 DOWNTO 24)
-                                    <= data_in_sig(i);
-                                p0_data_in_valid(i) <= '0';
-                            WHEN DATA_IN_OFF_ADDR_DST + 1 =>
-                                p0_addr_dst(23 DOWNTO 16)
-                                    <= data_in_sig(i);
-                                p0_data_in_valid(i) <= '0';
-                            WHEN DATA_IN_OFF_ADDR_DST + 2 =>
-                                p0_addr_dst(15 DOWNTO 8)
-                                    <= data_in_sig(i);
-                                p0_data_in_valid(i) <= '0';
-                            WHEN DATA_IN_OFF_ADDR_DST + 3 =>
-                                p0_addr_dst(7 DOWNTO 0)
-                                    <= data_in_sig(i);
-                                p0_addr_dst_valid <= true;
-                                p0_data_in_valid(i) <= '0';
-                            WHEN DATA_IN_OFF_PROTO =>
-                                IF data_in_sig(i) /= UDP_PROTO THEN
-                                    p0_data_in_err <= '1';
-                                END IF;
-                                p0_data_in_valid(i) <= '0';
-                            WHEN DATA_IN_OFF_UDP_HDR_PORT_SRC =>
-                                p0_udp_port_src(15 DOWNTO 8)
-                                    <= data_in_sig(i);
-                            WHEN DATA_IN_OFF_UDP_HDR_PORT_SRC + 1 =>
-                                p0_udp_port_src(7 DOWNTO 0)
-                                    <= data_in_sig(i);
-                                p0_udp_port_src_valid <= true;
-                            WHEN DATA_IN_OFF_UDP_HDR_PORT_DST =>
-                                p0_udp_port_dst(15 DOWNTO 8)
-                                    <= data_in_sig(i);
-                            WHEN DATA_IN_OFF_UDP_HDR_PORT_DST + 1 =>
-                                p0_udp_port_dst(7 DOWNTO 0)
-                                    <= data_in_sig(i);
-                                p0_udp_port_dst_valid <= true;
-                            WHEN DATA_IN_OFF_UDP_HDR_LEN =>
-                                p0_udp_len(15 DOWNTO 8)
-                                    <= UNSIGNED(data_in_sig(i));
-                                p0_data_in_valid(i) <= '0';
-                            WHEN DATA_IN_OFF_UDP_HDR_LEN + 1 =>
-                                p0_udp_len(7 DOWNTO 0)
-                                    <= UNSIGNED(data_in_sig(i));
-                                p0_udp_len_valid <= true;
-                                p0_data_in_valid(i) <= '0';
-                            WHEN DATA_IN_OFF_UDP_HDR_CHK =>
-                                p0_udp_chk(15 DOWNTO 8)
-                                    <= UNSIGNED(data_in_sig(i));
-                                p0_data_in_valid(i) <= '0';
-                            WHEN DATA_IN_OFF_UDP_HDR_CHK + 1 =>
-                                p0_udp_chk(7 DOWNTO 0)
-                                    <= UNSIGNED(data_in_sig(i));
-                                p0_udp_chk_valid <= true;
-                                p0_data_in_valid(i) <= '0';
-                            WHEN OTHERS =>
-                                NULL;
-                        END CASE;
-                        p0_off_var := p0_off_var + 1;
+                -- TODO: Make this generic, ran out of time
+                IF packed_data_in_valid /= x"00" AND NOT p0_hdr_done THEN
+                    IF NOT p0_started THEN
+                        p0_addr_src(31 DOWNTO 24) <= packed_data_in(0);
+                        p0_addr_src(23 DOWNTO 16) <= packed_data_in(1);
+                        p0_addr_src(15 DOWNTO 8) <= packed_data_in(2);
+                        p0_addr_src(7 DOWNTO 0) <= packed_data_in(3);
+                        p0_addr_src_valid <= true;
+                        p0_addr_dst(31 DOWNTO 24) <= packed_data_in(4);
+                        p0_addr_dst(23 DOWNTO 16) <= packed_data_in(5);
+                        p0_addr_dst(15 DOWNTO 8) <= packed_data_in(6);
+                        p0_addr_dst(7 DOWNTO 0) <= packed_data_in(7);
+                        p0_addr_dst_valid <= true;
+                        p0_data_in_valid <= (OTHERS => '0');
+                        -- Source address
+                        p0_data_in_valid(3 DOWNTO 0) <= (OTHERS => '1');
+                    ELSIF p0_addr_dst_valid THEN
+                        IF packed_data_in(0) /= UDP_PROTO THEN
+                            p0_data_in_err <= '1';
+                        END IF;
+                        p0_udp_port_src(15 DOWNTO 8) <= packed_data_in(1);
+                        p0_udp_port_src(7 DOWNTO 0) <= packed_data_in(2);
+                        p0_udp_port_src_valid <= true;
+                        p0_udp_port_dst(15 DOWNTO 8) <= packed_data_in(3);
+                        p0_udp_port_dst(7 DOWNTO 0) <= packed_data_in(4);
+                        p0_udp_port_dst_valid <= true;
+                        p0_udp_len(15 DOWNTO 8)
+                            <= UNSIGNED(packed_data_in(5));
+                        p0_udp_len(7 DOWNTO 0)
+                            <= UNSIGNED(packed_data_in(6));
+                        p0_udp_len_valid <= true;
+                        p0_udp_chk(15 DOWNTO 8)
+                            <= UNSIGNED(packed_data_in(7));
+                        p0_data_in_valid <= (OTHERS => '0');
+                        -- Source and destination ports
+                        p0_data_in_valid(4 DOWNTO 1) <= "1111";
+                    ELSE
+                        p0_udp_chk(7 DOWNTO 0)
+                            <= UNSIGNED(packed_data_in(0));
+                        p0_udp_chk_valid <= true;
+                        p0_data_in_valid(0) <= '0';
+                        p0_hdr_done <= true;
                     END IF;
-                END LOOP;
-                p0_len_read <= p0_off_var;
+                END IF;
+                p0_len_read_var := p0_len_read_var
+                    + TO_UNSIGNED(n_valid(packed_data_in_valid),
+                    p0_len_read_var'length);
+                p0_len_read <= p0_len_read_var;
 
                 --
                 -- Stage 1: UDP pseudo and normal header checksumming
