@@ -447,11 +447,14 @@ BEGIN
                 -- TODO: change internal offset variable to just a boolean
                 p2_internal_off_var := p2_internal_off;
                 p2_chk_addend_var := p2_chk_addend;
-                p2_chk_accum_var := p1_chk_accum;
                 IF p1_data_in_start = '1' THEN
                     p2_internal_off_var := (OTHERS => '0');
                     p2_chk_addend_var := (OTHERS => '0');
-                    p2_chk_accum_var := (OTHERS => '0');
+                END IF;
+                IF p2_chk_accum <= p1_chk_accum THEN
+                    p2_chk_accum_var := p1_chk_accum;
+                ELSE
+                    p2_chk_accum_var := p2_chk_accum;
                 END IF;
                 -- Note: If this is too slow, split into stages that handle
                 -- ranges of byte enables
