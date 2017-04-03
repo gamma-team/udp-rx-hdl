@@ -325,10 +325,6 @@ BEGIN
                     p0_data_in_start <= '1';
                     p0_len_read_var := (OTHERS => '0');
                 END IF;
-                IF packed_data_in_end = '1' THEN
-                    p0_started <= false;
-                    p0_hdr_done <= false;
-                END IF;
 
                 p0_addr_src_valid <= false;
                 p0_addr_dst_valid <= false;
@@ -379,6 +375,10 @@ BEGIN
                         p0_data_in_valid(0) <= '0';
                         p0_hdr_done <= true;
                     END IF;
+                END IF;
+                IF packed_data_in_end = '1' THEN
+                    p0_started <= false;
+                    p0_hdr_done <= false;
                 END IF;
                 p0_len_read_var := p0_len_read_var
                     + TO_UNSIGNED(n_valid(packed_data_in_valid),
@@ -451,7 +451,8 @@ BEGIN
                     p2_internal_off_var := (OTHERS => '0');
                     p2_chk_addend_var := (OTHERS => '0');
                 END IF;
-                IF p2_chk_accum <= p1_chk_accum THEN
+                IF p2_chk_accum <= p1_chk_accum
+                        OR p1_data_in_start = '1' THEN
                     p2_chk_accum_var := p1_chk_accum;
                 ELSE
                     p2_chk_accum_var := p2_chk_accum;
