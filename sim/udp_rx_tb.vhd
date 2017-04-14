@@ -1,3 +1,23 @@
+----------------------------------------------------------------------------------
+-- Company: University of Pittsburgh
+-- Engineer: Mohammed Aloqayli
+-- 
+-- Create Date: 04/14/2017 12:41:00 AM
+-- Design Name: UDP Receiver Test Bench
+-- Module Name: UDP_RX_TB - Behavioral
+-- Project Name: ECE-2140 Team Gamma
+-- Target Devices: Zync-7000
+-- Tool Versions: 
+-- Description: Test Bench for the UDP Receiver module of the UDP offload engine
+-- 
+-- Dependencies: 
+-- 
+-- Revision:
+-- Revision 0.01 - File Created
+-- Additional Comments:
+-- 
+----------------------------------------------------------------------------------
+
 library ieee;
 use ieee.std_logic_1164.all;
 --use ieee.numeric_std.all;
@@ -38,8 +58,8 @@ PORT (
 );
 END COMPONENT;
 
-file In_file : text open read_mode is "C:\tutorials\udp_rx\input.txt";-- Change the file name
-file Out_file : text open write_mode is "C:\tutorials\udp_rx\output.txt";-- Change the file name
+file In_file : text open read_mode is "zero-length.txt";-- Change the file name
+file Out_file : text open write_mode is "output.txt";-- Change the file name
 
 --Clock and Reset signals
 signal Clk: STD_LOGIC := '0';
@@ -62,6 +82,8 @@ signal Data_out_err : STD_LOGIC;
 
 signal TB_Completed: STD_LOGIC:= '0';
 signal Data_to_file: STD_LOGIC:= '0';
+signal Num_of_pckts : POSITIVE := 1;
+signal Count : INTEGER := 0;
 
 begin
 
@@ -123,11 +145,10 @@ begin
     Data_in <= (others => '0');
     Data_in_valid <= (others => '0');
     file_close(In_file);
-    report "TB - IPv4 packets has been loaded successfully";
+    report "TB - IPv4 packets have been loaded successfully";
     TB_Completed <= '1';
     wait;
 end process;    
-
 
 -- Output process
 process
@@ -173,8 +194,11 @@ begin
         end if;
     end if;
 	
-	
     if (Data_out_end = '1') then
+        Count <= Count + 1;
+    end if;
+    
+    if Num_of_pckts = Count then
         writeline(Out_file, Buff_out);
         Data_to_file <= '0';
         file_close(Out_file);
