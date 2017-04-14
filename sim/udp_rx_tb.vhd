@@ -58,8 +58,8 @@ PORT (
 );
 END COMPONENT;
 
-file In_file : text open read_mode is "zero-length.txt";-- Change the file name
-file Out_file : text open write_mode is "output.txt";-- Change the file name
+file In_file : text open read_mode is "consecutive-packets.txt";-- Change the file name
+file Out_file : text open write_mode is "output.txt";
 
 --Clock and Reset signals
 signal Clk: STD_LOGIC := '0';
@@ -82,7 +82,7 @@ signal Data_out_err : STD_LOGIC;
 
 signal TB_Completed: STD_LOGIC:= '0';
 signal Data_to_file: STD_LOGIC:= '0';
-signal Num_of_pckts : POSITIVE := 1;
+signal Num_of_pckts : POSITIVE := 3;
 signal Count : INTEGER := 0;
 
 begin
@@ -121,8 +121,6 @@ begin
     Data_in_err <= '0';
     -- wait for reset process to finish
     wait for 100 ns;
-    wait until rising_edge(clk);
-    Data_in_start <= '1';
     wait until rising_edge(clk);
     
     report "TB - Loadign IPv4 Packets from file...";
