@@ -4,7 +4,7 @@
 -- 
 -- Create Date: 04/14/2017 01:10:00 AM
 -- Design Name: UDP Receiver Test Bench
--- Module Name: UDP_RX_TB_POST_SYNTHESIS - Functional
+-- Module Name: UDP_RX_TB_POST_SYNTHESIS - Functional, Timing
 -- Project Name: ECE-2140 Team Gamma
 -- Target Devices: Zync-7000
 -- Tool Versions: 
