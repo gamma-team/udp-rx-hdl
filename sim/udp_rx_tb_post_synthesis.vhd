@@ -2,13 +2,13 @@
 -- Company: University of Pittsburgh
 -- Engineer: Mohammed Aloqayli
 -- 
--- Create Date: 04/14/2017 12:41:00 AM
+-- Create Date: 04/14/2017 01:10:00 AM
 -- Design Name: UDP Receiver Test Bench
--- Module Name: UDP_RX_TB - Behavioral
+-- Module Name: UDP_RX_TB_POST_SYNTHESIS - Functional
 -- Project Name: ECE-2140 Team Gamma
 -- Target Devices: Zync-7000
 -- Tool Versions: 
--- Description: Test Bench for the UDP Receiver module of the UDP offload engine
+-- Description: Post-Synthesis Test Bench for the UDP Receiver module of the UDP offload engine
 -- 
 -- Dependencies: 
 -- 
