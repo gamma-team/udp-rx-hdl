@@ -48,12 +48,14 @@ PORT (
     Data_in_start : IN STD_LOGIC;
     Data_in_end : IN STD_LOGIC;
     Data_in_err : IN STD_LOGIC;
+    Data_in_ready : OUT STD_LOGIC;
 
     Data_out : OUT STD_LOGIC_VECTOR(width * 8 - 1 DOWNTO 0);
     Data_out_valid : OUT STD_LOGIC_VECTOR(width - 1 DOWNTO 0);
     Data_out_start : OUT STD_LOGIC;
     Data_out_end : OUT STD_LOGIC;
-    Data_out_err : OUT STD_LOGIC
+    Data_out_err : OUT STD_LOGIC;
+    Data_out_ready : IN STD_LOGIC
 
 );
 END COMPONENT;
@@ -71,6 +73,7 @@ signal Data_in_valid : STD_LOGIC_VECTOR(TB_width - 1 DOWNTO 0);
 signal Data_in_start : STD_LOGIC;
 signal Data_in_end : STD_LOGIC;
 signal Data_in_err : STD_LOGIC;
+signal Data_in_ready : STD_LOGIC;
 
 --Outputs signals
 signal Data_out : STD_LOGIC_VECTOR(TB_width * 8 - 1 DOWNTO 0);
@@ -78,9 +81,9 @@ signal Data_out_valid : STD_LOGIC_VECTOR(TB_width - 1 DOWNTO 0);
 signal Data_out_start : STD_LOGIC;
 signal Data_out_end : STD_LOGIC;
 signal Data_out_err : STD_LOGIC;
+signal Data_out_ready : STD_LOGIC;
 
-
-signal TB_Completed: STD_LOGIC:= '0';
+--Testbench Signals
 signal Data_to_file: STD_LOGIC:= '0';
 signal Num_of_pckts : POSITIVE := 3;
 signal Count : INTEGER := 0;
@@ -96,12 +99,14 @@ DUT: udp_rx port map (
     Data_in_start => Data_in_start,
     Data_in_end => Data_in_end,
     Data_in_err => Data_in_err,
+    Data_in_ready => Data_in_ready,
 	
     Data_out => Data_out,
     Data_out_valid => Data_out_valid,
     Data_out_start => Data_out_start,
     Data_out_end => Data_out_end,
-    Data_out_err => Data_out_err
+    Data_out_err => Data_out_err,
+    Data_out_ready => Data_out_ready
 );
 
 
@@ -119,10 +124,11 @@ begin
     Data_in_start <= '0';
     Data_in_end <= '0';
     Data_in_err <= '0';
+    Data_out_ready <= '0';
     -- wait for reset process to finish
     wait for 100 ns;
     wait until rising_edge(clk);
-    
+    Data_out_ready <= '1';
     report "TB - Loadign IPv4 Packets from file...";
     while not endfile(In_file) loop
         readline(In_file, Buff_in);
@@ -144,7 +150,6 @@ begin
     Data_in_valid <= (others => '0');
     file_close(In_file);
     report "TB - IPv4 packets have been loaded successfully";
-    TB_Completed <= '1';
     wait;
 end process;    
 
