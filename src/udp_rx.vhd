@@ -128,6 +128,7 @@ ARCHITECTURE normal OF udp_rx IS
     SIGNAL p0_udp_port_src_valid : BOOLEAN;
     SIGNAL p0_udp_port_dst_valid : BOOLEAN;
     SIGNAL p0_udp_len_valid : BOOLEAN;
+    SIGNAL p0_udp_len_saved : BOOLEAN;
     SIGNAL p0_udp_chk_valid : BOOLEAN;
     -- Number of bytes read on input stream, 17 bits so a full UDP datagram
     -- plus our extra information is countable.
@@ -258,6 +259,7 @@ BEGIN
                 p0_udp_len <= (OTHERS => '0');
                 p0_udp_chk <= (OTHERS => '0');
                 p0_addr_src_valid <= false;
+                p0_udp_len_saved <= false;
                 p0_addr_dst_valid <= false;
                 p0_udp_port_src_valid <= false;
                 p0_udp_port_dst_valid <= false;
@@ -353,7 +355,7 @@ BEGIN
                         p0_data_in_valid <= (OTHERS => '0');
                         -- Source address
                         p0_data_in_valid(4 DOWNTO 1) <= "1111";
-                    ELSIF p0_addr_src_valid THEN
+                    ELSIF NOT p0_udp_len_saved THEN
                         p0_addr_dst(7 DOWNTO 0) <= packed_data_in(0);
                         p0_addr_dst_valid <= true;
                         p0_udp_port_src(15 DOWNTO 8) <= packed_data_in(1);
@@ -367,12 +369,13 @@ BEGIN
                         p0_udp_len(7 DOWNTO 0)
                             <= UNSIGNED(packed_data_in(6));
                         p0_udp_len_valid <= true;
+                        p0_udp_len_saved <= true;
                         p0_udp_chk(15 DOWNTO 8)
                             <= UNSIGNED(packed_data_in(7));
                         p0_data_in_valid <= (OTHERS => '0');
                         -- Source and destination ports
                         p0_data_in_valid(4 DOWNTO 1) <= "1111";
-                    ELSE
+                    ELSIF NOT p0_hdr_done THEN
                         p0_udp_chk(7 DOWNTO 0)
                             <= UNSIGNED(packed_data_in(0));
                         p0_udp_chk_valid <= true;
@@ -383,6 +386,7 @@ BEGIN
                 IF packed_data_in_end = '1' THEN
                     p0_started <= false;
                     p0_hdr_done <= false;
+                    p0_udp_len_saved <= false;
                 END IF;
                 p0_len_read_var := p0_len_read_var
                     + TO_UNSIGNED(n_valid(packed_data_in_valid),
