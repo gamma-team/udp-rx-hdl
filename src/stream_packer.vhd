@@ -171,7 +171,6 @@ BEGIN
 
         VARIABLE out_reg_var : intermediate_reg;
         -- FIXME: extra bit for testing
-        VARIABLE z : UNSIGNED(NATURAL(CEIL(LOG2(REAL(width)))) DOWNTO 0);
         VARIABLE n : INTEGER;
         VARIABLE kept_byte_n : INTEGER;
     BEGIN
@@ -237,21 +236,20 @@ BEGIN
             ELSE
                 -- Populate intermediate data fanout
                 FOR i IN 0 TO width - 1 LOOP
-                    z := (OTHERS => '0');
                     stage1_regs(i).keep <= (OTHERS => '0');
-                    --FOR j IN stage1_regs(i).mask_end TO width - 1 LOOP --
-                    --Vivado 2016.4 doesn't realize mask_end is constant
-                    FOR j IN i TO width - 1 LOOP
-                        FOR k IN INTEGER RANGE 1 TO in_data_sig'length LOOP
-                            stage1_regs(i).data(j) <= in_data_sig(k - 1);
-                            IF in_keep_sig(k - 1) AND k > TO_INTEGER(z) THEN
-                                stage1_regs(i).keep(j) <= '1';
-                                z := TO_UNSIGNED(k, z'length);
-                                EXIT;
+                    stage1_regs(i).last <= '0';
+                    kept_byte_n := 0;
+                    FOR j IN 0 TO width - 1 LOOP
+                        IF in_keep_sig(j) THEN
+                            IF kept_byte_n < width - i THEN
+                                stage1_regs(i).data(kept_byte_n + i)
+                                    <= in_data_sig(j);
+                                stage1_regs(i).keep(kept_byte_n + i) <= '1';
+                                stage1_regs(i).last <= In_last;
                             END IF;
-                        END LOOP;
+                            kept_byte_n := kept_byte_n + 1;
+                        END IF;
                     END LOOP;
-                    stage1_regs(i).last <= In_last;
                 END LOOP;
                 stage1_in_data <= in_data_sig;
                 stage1_in_keep <= in_keep_sig;
@@ -290,7 +288,7 @@ BEGIN
                 IF all_true(out_reg_var.keep) OR out_reg_var.last = '1' THEN
                     n := n_valid(out_ovf_reg.keep);
                     IF n > 0 THEN
-                        IF out_ovf_reg.last = '1' THEN
+                        IF out_ovf_reg.last = '1' OR n = 8 THEN
                             out_reg_var := out_ovf_reg;
                             out_ovf_reg <= stage2_regs(0);
                         ELSE
