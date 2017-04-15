@@ -1,9 +1,3 @@
--- STATUS: Works for constant streaming where sinks and sources are always
--- asserting ready. This is good enough for this project, so it is left that
--- way for now.
--- BUG: ACKing from Out_ready is not implemented
--- BUG: Sink interface does not ACK properly when the output interface is not
--- ready. It always asserts that it is ready.
 --
 -- Copyright 2017 Patrick Gauvin
 --
@@ -92,6 +86,8 @@ ARCHITECTURE yagami OF stream_packer IS
 
     SIGNAL ext_out_reg : intermediate_reg;
     SIGNAL ext_out_reg_valid : STD_LOGIC;
+
+    SIGNAL flow_enable : STD_LOGIC;
 BEGIN
     g_in_sig: FOR i IN 0 TO width - 1 GENERATE
         in_data_sig(i) <= In_data((i + 1) * 8 - 1 DOWNTO i * 8);
@@ -104,6 +100,11 @@ BEGIN
     Out_keep <= ext_out_reg.keep;
     Out_last <= ext_out_reg.last;
     Out_valid <= ext_out_reg_valid;
+
+    -- Handle pushback
+    In_ready <= flow_enable;
+    flow_enable <= '1' WHEN (ext_out_reg_valid = '0' OR Out_ready = '1')
+        ELSE '0';
 
     PROCESS(Clk)
         -- AND all the bits in a vector with B
@@ -206,7 +207,6 @@ BEGIN
                 ext_out_reg.keep <= (OTHERS => '0');
                 ext_out_reg_valid <= '0';
                 ext_out_reg.last <= '0';
-                in_ready <= '1';
                 stage1_in_data <= (OTHERS => (OTHERS => '0'));
                 stage1_in_keep <= (OTHERS => FALSE);
                 stage1_in_last <= '0';
@@ -233,7 +233,7 @@ BEGIN
                     stage2_ovf_regs(i).keep <= (OTHERS => '0');
                     stage2_ovf_regs(i).last <= '0';
                 END LOOP;
-            ELSE
+            ELSIF flow_enable = '1' THEN
                 -- Populate intermediate data fanout
                 FOR i IN 0 TO width - 1 LOOP
                     stage1_regs(i).keep <= (OTHERS => '0');
