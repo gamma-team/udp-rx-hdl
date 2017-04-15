@@ -1,3 +1,9 @@
+-- UDP receiver
+--
+-- Notes:
+-- - This module will never be unable to accept data, unless what it is
+--   outputting to pushes back.
+--
 -- Copyright 2017 Patrick Gauvin
 --
 -- Redistribution and use in source and binary forms, with or without
@@ -54,6 +60,8 @@ ENTITY udp_rx IS
         -- Indicate that there has been an error in the current data stream.
         -- Data_in will be ignored until the next Data_in_start assertion.
         Data_in_err : IN STD_LOGIC;
+        -- Acknowledges data
+        Data_in_ready : OUT STD_LOGIC;
 
         -- UDP payload data output bus to the application layer.
         -- Byte offsets (all integer types are big endian):
@@ -70,7 +78,9 @@ ENTITY udp_rx IS
         Data_out_end : OUT STD_LOGIC;
         -- Indicate that there has been an error in the current datagram.
         -- Data_out should be ignored until the next Data_out_start assertion.
-        Data_out_err : OUT STD_LOGIC
+        Data_out_err : OUT STD_LOGIC;
+        -- Acknowledges data
+        Data_out_ready : IN STD_LOGIC
     );
 END ENTITY;
 
@@ -191,6 +201,9 @@ ARCHITECTURE normal OF udp_rx IS
     SIGNAL packed_data_in_start : STD_LOGIC;
     SIGNAL packed_data_in_end : STD_LOGIC;
     SIGNAL packed_data_in_err : STD_LOGIC;
+
+    SIGNAL flow_enable : STD_LOGIC;
+    SIGNAL packer_ready : STD_LOGIC;
 BEGIN
     rstn <= NOT Rst;
 
@@ -208,13 +221,18 @@ BEGIN
             In_keep => Data_in_valid,
             In_valid => '1',
             In_last => Data_in_end,
-            In_ready => OPEN,
+            In_ready => packer_ready,
             Out_data => packed_data_in_sig,
             Out_keep => packed_data_in_valid,
             Out_valid => OPEN,
             Out_last => packed_data_in_end,
-            Out_ready => '1'
+            Out_ready => flow_enable
         );
+
+    -- Handle pushback
+    Data_in_ready <= packer_ready;
+    flow_enable <= '1' WHEN (p4_data_in_valid = x"00" OR Data_out_ready = '1')
+        ELSE '0';
 
     PROCESS(Clk)
         FUNCTION n_valid(v : STD_LOGIC_VECTOR)
@@ -306,7 +324,7 @@ BEGIN
                 p4_data_in_start <= '0';
                 p4_data_in_end <= '0';
                 p4_data_in_err <= '0';
-            ELSE
+            ELSIF flow_enable = '1' THEN
                 -- Input signal wiring
                 FOR i IN data_in_reg'range LOOP
                     data_in_reg(i) <= Data_in((i + 1) * 8 - 1 DOWNTO i * 8);
