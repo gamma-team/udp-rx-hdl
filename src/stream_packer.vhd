@@ -1,5 +1,6 @@
+-- AXI4-Stream null byte remover.
 --
--- Copyright 2017 Patrick Gauvin
+-- Copyright 2017 Patrick Gauvin. All rights reserved.
 --
 -- Redistribution and use in source and binary forms, with or without
 -- modification, are permitted provided that the following conditions are met:
@@ -77,12 +78,15 @@ ARCHITECTURE yagami OF stream_packer IS
 
     SIGNAL stage2_regs : intermediate_regs(0 TO width - 1);
     SIGNAL stage2_ovf_regs : intermediate_regs(0 TO width - 1);
+    SIGNAL stage2_in_keep : BOOLEAN_VECTOR(width - 1 DOWNTO 0);
+    SIGNAL stage2_in_last : STD_LOGIC;
 
     SIGNAL out_reg : intermediate_reg;
     SIGNAL out_ovf_reg : intermediate_reg;
 
     SIGNAL in_data_sig : DATA_BUS;
     SIGNAL in_keep_sig : BOOLEAN_VECTOR(width - 1 DOWNTO 0);
+    SIGNAL in_last_sig : STD_LOGIC;
 
     SIGNAL ext_out_reg : intermediate_reg;
     SIGNAL ext_out_reg_valid : STD_LOGIC;
@@ -94,6 +98,7 @@ BEGIN
         in_keep_sig(i) <= TRUE WHEN In_keep(i) = '1' AND In_valid = '1'
             ELSE FALSE;
     END GENERATE;
+    in_last_sig <= In_valid AND In_last;
     g_out_sig: FOR i IN 0 TO width - 1 GENERATE
         Out_data((i + 1) * 8 - 1 DOWNTO i * 8) <= ext_out_reg.data(i);
     END GENERATE;
@@ -118,15 +123,20 @@ BEGIN
             RETURN v2;
         END FUNCTION;
 
-        FUNCTION all_false(v : STD_LOGIC_VECTOR(width - 1 DOWNTO 0))
+        FUNCTION all_false(v : BOOLEAN_VECTOR(width - 1 DOWNTO 0))
             RETURN BOOLEAN IS
-            VARIABLE b : STD_LOGIC;
+            VARIABLE b : BOOLEAN;
         BEGIN
-            b := '0';
+            b := FALSE;
             FOR i IN v'range LOOP
                 b := b OR v(i);
             END LOOP;
-            RETURN b = '0';
+            IF b THEN
+                report "not all false";
+                ELSE
+                report "all false";
+            END IF;
+            RETURN b = FALSE;
         END FUNCTION;
 
         FUNCTION all_true(v : STD_LOGIC_VECTOR(width - 1 DOWNTO 0))
@@ -210,6 +220,8 @@ BEGIN
                 stage1_in_data <= (OTHERS => (OTHERS => '0'));
                 stage1_in_keep <= (OTHERS => FALSE);
                 stage1_in_last <= '0';
+                stage2_in_keep <= (OTHERS => FALSE);
+                stage2_in_last <= '0';
                 FOR i IN 0 TO width - 1 LOOP
                     stage1_regs(i).data(width - 1
                         --DOWNTO stage1_regs(i).mask_end)
@@ -245,7 +257,7 @@ BEGIN
                                 stage1_regs(i).data(kept_byte_n + i)
                                     <= in_data_sig(j);
                                 stage1_regs(i).keep(kept_byte_n + i) <= '1';
-                                stage1_regs(i).last <= In_last;
+                                stage1_regs(i).last <= in_last_sig;
                             END IF;
                             kept_byte_n := kept_byte_n + 1;
                         END IF;
@@ -253,9 +265,11 @@ BEGIN
                 END LOOP;
                 stage1_in_data <= in_data_sig;
                 stage1_in_keep <= in_keep_sig;
-                stage1_in_last <= In_last;
+                stage1_in_last <= in_last_sig;
 
                 stage2_regs <= stage1_regs;
+                stage2_in_last <= stage1_in_last;
+                stage2_in_keep <= stage1_in_keep;
                 -- Populate overflow possibilities (data only)
                 FOR i IN 0 TO width - 1 LOOP
                     stage2_ovf_regs(i).keep <= (OTHERS => '0');
@@ -332,6 +346,13 @@ BEGIN
                             out_ovf_reg.last <= '0';
                         END IF;
                     --END IF;
+                END IF;
+                -- Catch an all-null last signal. The all-null
+                -- last signal is inefficient anyway, so no effort
+                -- is made to merge it with other data.
+                IF stage2_in_last = '1'
+                        AND all_false(stage2_in_keep) THEN
+                    out_reg_var.last := '1';
                 END IF;
                 out_reg <= out_reg_var;
 

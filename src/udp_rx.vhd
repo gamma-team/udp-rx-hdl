@@ -4,7 +4,7 @@
 -- - This module will never be unable to accept data, unless what it is
 --   outputting to pushes back.
 --
--- Copyright 2017 Patrick Gauvin
+-- Copyright 2017 Patrick Gauvin. All rights reserved.
 --
 -- Redistribution and use in source and binary forms, with or without
 -- modification, are permitted provided that the following conditions are met:
